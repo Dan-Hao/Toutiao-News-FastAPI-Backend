@@ -1,0 +1,89 @@
+# Python 通用忽略
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+pip-log.txt
+pip-delete-this-directory.txt
+
+# 虚拟环境（重点）
+venv/
+env/
+ENV/
+.venv/
+.env/
+
+# 依赖清单（可选忽略，建议提交 requirements.txt，忽略锁文件）
+# requirements.txt 建议提交，以下是可选忽略
+poetry.lock
+Pipfile.lock
+*.lock
+
+# FastAPI/UVicorn 运行产物
+*.log
+access.log
+error.log
+.pid
+*.pid
+
+# 环境变量文件（核心，必忽略）
+.env
+.env.*
+!.env.example  # 保留示例文件
+
+# 数据库文件（如使用 SQLite）
+*.db
+*.sqlite3
+*.db-journal
+
+# IDE/编辑器配置
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store  # Mac 系统文件
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# 测试/覆盖率报告
+htmlcov/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# 打包/分发
+*.tar.gz
+*.zip
+*.whl
+
+# 临时文件
+tmp/
+temp/
+*.tmp
+*.bak
