@@ -6,59 +6,68 @@
       left-arrow
       @click-left="onClickLeft"
       fixed
+      class="detail-nav"
     />
-    
+
     <div class="detail-content" v-if="newsStore.newsDetail.id">
-      <div class="title-container">
-        <h1 class="title">{{ newsStore.newsDetail.title }}</h1>
-        <van-button 
-          class="favorite-btn" 
-          :icon="isFavorite ? 'star' : 'star-o'" 
-          :class="{ 'is-favorite': isFavorite }"
-          @click="toggleFavorite"
-        />
-      </div>
-      
-      <div class="info">
-        <span>{{ newsStore.newsDetail.author }}</span>
-        <span>{{ newsStore.newsDetail.publishTime }}</span>
-        <span>{{ newsStore.newsDetail.views }} 阅读</span>
-      </div>
-      
+      <header class="article-header neon-panel">
+        <div class="article-kicker">FEATURE STORY</div>
+        <div class="title-container">
+          <h1 class="title">{{ newsStore.newsDetail.title }}</h1>
+          <van-button
+            class="favorite-btn"
+            :icon="isFavorite ? 'star' : 'star-o'"
+            :class="{ 'is-favorite': isFavorite }"
+            @click="toggleFavorite"
+          />
+        </div>
+
+        <div class="info">
+          <span>{{ newsStore.newsDetail.author }}</span>
+          <span>{{ newsStore.newsDetail.publishTime }}</span>
+          <span>{{ newsStore.newsDetail.views }} 阅读</span>
+        </div>
+      </header>
+
       <div class="cover" v-if="newsStore.newsDetail.image">
         <img :src="newsStore.newsDetail.image" :alt="newsStore.newsDetail.title">
       </div>
-      
-      <div class="content">
+
+      <article class="content neon-panel-strong">
         <p v-for="(paragraph, index) in contentParagraphs" :key="index">
           {{ paragraph }}
         </p>
-      </div>
-      
-      <div class="related-news" v-if="newsStore.newsDetail.relatedNews?.length">
-        <h3>相关推荐</h3>
+      </article>
+
+      <section class="related-news neon-panel" v-if="newsStore.newsDetail.relatedNews?.length">
+        <div class="related-heading">
+          <h3>继续阅读</h3>
+          <span>相关推荐</span>
+        </div>
         <div class="related-list">
-          <div 
-            class="related-item" 
-            v-for="item in newsStore.newsDetail.relatedNews" 
+          <div
+            class="related-item"
+            v-for="item in newsStore.newsDetail.relatedNews"
             :key="item.id"
             @click="goToRelatedNews(item.id)"
           >
             <div class="related-image">
               <img :src="item.image" :alt="item.title">
             </div>
-            <div class="related-title">{{ item.title }}</div>
+            <div class="related-copy">
+              <div class="related-title">{{ item.title }}</div>
+            </div>
           </div>
         </div>
-      </div>
+      </section>
     </div>
-    
+
     <van-empty v-else description="加载中..." />
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useNewsStore } from '../store/modules/news'
 import { useHistoryStore } from '../store/modules/history'
@@ -73,35 +82,27 @@ const historyStore = useHistoryStore()
 const favoriteStore = useFavoriteStore()
 const userStore = useUserStore()
 
-// 获取路由参数中的新闻ID
 const newsId = computed(() => Number(route.params.id))
 
-// 将内容拆分为段落
 const contentParagraphs = computed(() => {
   if (!newsStore.newsDetail.content) return []
   return newsStore.newsDetail.content.split('\n\n').filter(p => p.trim())
 })
 
-// 返回上一页
 const onClickLeft = () => {
   router.back()
 }
 
-// 跳转到相关新闻
 const goToRelatedNews = (id) => {
   router.push(`/news/detail/${id}`)
 }
 
-// 判断当前新闻是否已收藏
 const isFavorite = computed(() => {
   return favoriteStore.isFavorite(newsId.value)
 })
 
-// 切换收藏状态
 const toggleFavorite = async () => {
-  // 判断用户是否已登录
   if (!userStore.getLoginStatus) {
-    // 未登录则跳转到登录页
     showToast({
       message: '请先登录后再收藏',
       position: 'bottom',
@@ -109,10 +110,9 @@ const toggleFavorite = async () => {
     router.push('/login')
     return
   }
-  
-  // 已登录则调用API切换收藏状态
+
   const status = await favoriteStore.toggleFavorite(newsStore.newsDetail)
-  
+
   if (status === true) {
     showToast({
       message: '已添加到收藏',
@@ -124,7 +124,6 @@ const toggleFavorite = async () => {
       position: 'bottom',
     })
   } else {
-    // status为null表示操作失败
     showToast({
       message: '操作失败，请稍后重试',
       position: 'bottom',
@@ -132,34 +131,25 @@ const toggleFavorite = async () => {
   }
 }
 
-// 组件挂载时获取新闻详情并添加到浏览历史
 onMounted(async () => {
   await newsStore.getNewsDetail(newsId.value)
-  
-  // 添加到浏览历史
+
   if (newsStore.newsDetail.id) {
-    // 先调用API记录浏览历史
     if (userStore.getLoginStatus) {
       try {
-        const result = await historyStore.addHistoryApi(newsStore.newsDetail.id);
-        console.log('记录浏览历史API结果:', result);
+        const result = await historyStore.addHistoryApi(newsStore.newsDetail.id)
+        console.log('记录浏览历史API结果:', result)
       } catch (error) {
-        console.error('记录浏览历史API失败:', error);
+        console.error('记录浏览历史API失败:', error)
       }
     }
-    
-    // 无论API是否成功，都添加到本地浏览历史
-    // historyStore.addHistory(newsStore.newsDetail);
   }
-  
-  // 加载收藏数据
+
   favoriteStore.loadFavorites()
-  
-  // 检查文章收藏状态
+
   if (userStore.getLoginStatus && newsStore.newsDetail.id) {
     const result = await favoriteStore.checkFavoriteStatusApi(newsStore.newsDetail.id)
     if (result.success && !result.isLocal) {
-      // 如果API请求成功且不是本地状态，更新本地收藏状态
       if (result.isFavorite && !favoriteStore.isFavorite(newsStore.newsDetail.id)) {
         favoriteStore.addFavorite(newsStore.newsDetail)
       } else if (!result.isFavorite && favoriteStore.isFavorite(newsStore.newsDetail.id)) {
@@ -172,113 +162,187 @@ onMounted(async () => {
 
 <style scoped>
 .news-detail {
-  padding-top: 46px;
-  background-color: #fff;
   min-height: 100vh;
+  padding: 70px 16px 48px;
+  background: transparent;
+}
+
+.detail-nav {
+  width: min(calc(100% - 32px), 718px);
+  left: 50%;
+  transform: translateX(-50%);
+  top: 12px;
+  border-radius: 24px;
+  overflow: hidden;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.015)), var(--nav-background);
+  border: 1px solid var(--nav-border);
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(var(--backdrop-blur));
+  -webkit-backdrop-filter: blur(var(--backdrop-blur));
 }
 
 .detail-content {
-  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.article-header {
+  padding: 24px;
+  border-radius: 30px;
+}
+
+.article-kicker {
+  margin-bottom: 14px;
+  color: var(--accent-primary);
+  font-size: 11px;
+  letter-spacing: 0.18em;
 }
 
 .title-container {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  margin-bottom: 12px;
+  gap: 14px;
+  margin-bottom: 14px;
 }
 
 .title {
-  font-size: 22px;
-  font-weight: bold;
-  line-height: 1.4;
+  font-size: 31px;
+  font-weight: 700;
+  line-height: 1.2;
   margin: 0;
   flex: 1;
+  letter-spacing: -0.02em;
 }
 
 .favorite-btn {
   flex-shrink: 0;
-  margin-left: 10px;
   padding: 0;
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
+  border: 1px solid var(--button-ghost-border);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-secondary);
 }
 
 .favorite-btn.is-favorite {
-  color: #ff9500;
+  color: var(--accent-primary);
 }
 
 .info {
   display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
   font-size: 12px;
-  color: #999;
-  margin-bottom: 16px;
-}
-
-.info span {
-  margin-right: 12px;
+  color: var(--text-muted);
 }
 
 .cover {
-  margin-bottom: 16px;
+  overflow: hidden;
+  border-radius: 30px;
+  box-shadow: var(--shadow-soft);
 }
 
 .cover img {
   width: 100%;
-  border-radius: 4px;
+  display: block;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
 }
 
 .content {
-  font-size: 16px;
-  line-height: 1.8;
-  color: #333;
+  padding: 28px 24px;
+  border-radius: 30px;
 }
 
 .content p {
-  margin-bottom: 16px;
+  margin: 0 0 20px;
+  font-size: 16px;
+  line-height: 2;
+  color: var(--text-secondary);
   text-align: justify;
 }
 
-.related-news {
-  margin-top: 24px;
-  padding-top: 16px;
-  border-top: 8px solid #f5f5f5;
+.content p:last-child {
+  margin-bottom: 0;
 }
 
-.related-news h3 {
-  font-size: 18px;
-  margin: 0 0 16px;
+.related-news {
+  padding: 24px;
+  border-radius: 30px;
+}
+
+.related-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+
+.related-heading h3 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.related-heading span {
+  font-size: 12px;
+  color: var(--text-muted);
 }
 
 .related-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
 }
 
 .related-item {
   display: flex;
   align-items: center;
+  gap: 14px;
+  padding: 12px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .related-image {
-  width: 80px;
-  height: 60px;
-  margin-right: 12px;
+  width: 92px;
+  height: 68px;
   flex-shrink: 0;
+  overflow: hidden;
+  border-radius: 16px;
 }
 
 .related-image img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  border-radius: 4px;
+}
+
+.related-copy {
+  flex: 1;
 }
 
 .related-title {
-  font-size: 14px;
-  line-height: 1.4;
-  flex: 1;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text-primary);
+}
+
+@media (max-width: 520px) {
+  .title {
+    font-size: 27px;
+  }
+
+  .content {
+    padding: 24px 20px;
+  }
+
+  .content p {
+    font-size: 15px;
+    line-height: 1.9;
+  }
 }
 </style>

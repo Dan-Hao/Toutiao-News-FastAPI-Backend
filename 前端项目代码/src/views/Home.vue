@@ -1,19 +1,26 @@
 <template>
-  <div class="home">
-    <van-nav-bar :title="$t('home.title')" fixed />
-    
-    <!-- 更多选项独立div -->
-    <div class="more-options">
-      <div class="more-tab" @click="goToCategory">
-        {{ $t('home.more') }} <van-icon name="arrow" />
+  <div class="home page-shell">
+    <div class="home-top-stack">
+      <van-nav-bar :title="$t('home.title')" fixed class="home-nav" />
+
+      <div class="home-intro neon-panel">
+        <div>
+          <div class="home-intro-label">EDITOR'S SELECTION</div>
+          <h2>{{ $t('home.title') }}</h2>
+          <p>以更沉静的版式整理热点内容，让浏览接近阅读杂志封面的节奏。</p>
+        </div>
+        <button class="home-more neon-floating" type="button" @click="goToCategory">
+          <span>浏览栏目</span>
+          <van-icon name="arrow" />
+        </button>
       </div>
     </div>
-    
-    <div class="category-tabs">
-      <van-tabs v-model:active="activeTab" sticky swipeable animated>
-        <van-tab 
-          v-for="(category, index) in displayCategories" 
-          :key="category.id" 
+
+    <div class="category-tabs neon-panel-strong">
+      <van-tabs v-model:active="activeTab" sticky swipeable animated offset-top="154">
+        <van-tab
+          v-for="category in displayCategories"
+          :key="category.id"
           :title="getCategoryTranslation(category.name)"
           @click="newsStore.changeCategory(category.id)"
         >
@@ -24,23 +31,25 @@
               :finished-text="$t('home.noMore')"
               @load="onLoad"
             >
-              <news-item 
-                v-for="item in newsStore.newsList" 
-                :key="item.id" 
-                :news="item" 
+              <div class="feed-space"></div>
+              <news-item
+                v-for="item in newsStore.newsList"
+                :key="item.id"
+                :news="item"
               />
+              <div class="feed-bottom-space"></div>
             </van-list>
           </van-pull-refresh>
         </van-tab>
       </van-tabs>
     </div>
-    
+
     <tab-bar />
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, watch, computed, onBeforeUnmount } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import { useNewsStore } from '../store/modules/news'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
@@ -52,22 +61,17 @@ const router = useRouter()
 const route = useRoute()
 const { t } = useI18n()
 const activeTab = ref(0)
-const tabsTop = ref(0)
 
-// 监听路由变化
 watch(
   () => route.query.categoryId,
   (newCategoryId) => {
     if (newCategoryId) {
       const categoryId = parseInt(newCategoryId)
-      // 找到分类ID对应的索引
       const filteredCategories = newsStore.categories.filter(category => category.name !== '更多')
       const index = filteredCategories.findIndex(cat => cat.id === categoryId)
-      
+
       if (index !== -1) {
-        // 设置activeTab为对应索引
         activeTab.value = index
-        // 切换分类
         newsStore.changeCategory(categoryId)
       }
     }
@@ -76,35 +80,15 @@ watch(
 )
 
 onMounted(() => {
-  // 获取新闻分类
   newsStore.getCategories().then(() => {
-    // 获取新闻列表
     newsStore.getNewsList()
   })
-  
-  // 初始化位置
-  setTimeout(updateTabsPosition, 300)
-  
-  // 添加滚动事件监听
-  window.addEventListener('scroll', handleScroll)
 })
 
-// 计算属性：显示的分类（只显示非"更多"分类）
 const displayCategories = computed(() => {
-  // 获取所有非"更多"分类
-  return newsStore.categories.filter(category => category.name !== '更多');
+  return newsStore.categories.filter(category => category.name !== '更多')
 })
 
-// 计算属性：更多下拉菜单中显示的分类（只显示军事、科技、财经分类）
-const moreCategories = computed(() => {
-  return newsStore.categories.filter(category => 
-    category.name === '军事' || 
-    category.name === '科技' || 
-    category.name === '财经'
-  );
-})
-
-// 获取分类名称的翻译
 const getCategoryTranslation = (categoryName) => {
   const categoryMap = {
     '头条': 'headline',
@@ -117,169 +101,151 @@ const getCategoryTranslation = (categoryName) => {
     '科技': 'technology',
     '财经': 'finance',
     '更多': 'more'
-  };
-  
-  const key = categoryMap[categoryName];
-  return key ? t(`home.categories.${key}`) : categoryName;
-}
-    
+  }
 
-// 跳转到分类页面
+  const key = categoryMap[categoryName]
+  return key ? t(`home.categories.${key}`) : categoryName
+}
+
 const goToCategory = () => {
   router.push('/category')
 }
 
-// 处理标签点击事件
-const handleTabClick = (index) => {
-  // 如果不是点击"更多"选项，则关闭下拉菜单
-  if (displayCategories.value[index].name !== '更多') {
-    showDropdown.value = false
-    newsStore.changeCategory(displayCategories.value[index].id)
-  }
-}
-
-// 选择更多分类中的某个分类
-const selectMoreCategory = (category) => {
-  showDropdown.value = false
-  newsStore.changeCategory(category.id)
-  
-  // 找到选中分类在原始分类中的索引
-  const index = newsStore.categories.findIndex(cat => cat.id === category.id)
-  if (index !== -1) {
-    // 直接设置activeTab为对应索引
-    activeTab.value = index
-  }
-}
-// 获取分类导航栏的位置并设置滚动监听
-const updateTabsPosition = () => {
-  const tabsElement = document.querySelector('.van-tabs__wrap')
-  if (tabsElement) {
-    tabsTop.value = tabsElement.getBoundingClientRect().top
-  }
-}
-
-// 滚动事件处理
-const handleScroll = () => {
-  updateTabsPosition()
-}
-
-onMounted(() => {
-  newsStore.getNewsList()
-  
-  // 初始化位置
-  setTimeout(updateTabsPosition, 300)
-  
-  // 添加滚动事件监听
-  window.addEventListener('scroll', handleScroll)
-})
-
-// 组件销毁前移除事件监听
-onBeforeUnmount(() => {
-  window.removeEventListener('scroll', handleScroll)
-})
-
-// 监听分类变化
 watch(activeTab, (newVal) => {
-  const categoryId = newsStore.categories[newVal].id
-  newsStore.changeCategory(categoryId)
+  if (newsStore.categories[newVal]) {
+    const categoryId = newsStore.categories[newVal].id
+    newsStore.changeCategory(categoryId)
+  }
 })
 
-// 下拉刷新
 const onRefresh = () => {
   newsStore.getNewsList(true)
 }
 
-// 上拉加载更多
 const onLoad = () => {
   newsStore.getNewsList()
-}
-
-// 切换分类
-const changeCategory = (categoryId) => {
-  // 如果点击的是"更多"选项
-  if (categoryId === 10) {
-    goToCategory()
-    return
-  }
-  
-  newsStore.changeCategory(categoryId)
 }
 </script>
 
 <style scoped>
-.home {
-  padding-top: 46px;
-  padding-bottom: 50px;
-  background-color: #f7f8fa;
+.page-shell {
   min-height: 100vh;
+  padding: 74px 0 118px;
+  color: var(--text-primary);
+}
+
+.home-top-stack {
+  padding: 0 16px 20px;
+}
+
+.home-nav {
+  width: min(calc(100% - 32px), 718px);
+  left: 50%;
+  transform: translateX(-50%);
+  top: 12px;
+  border-radius: 24px;
+  overflow: hidden;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.015)), var(--nav-background);
+  border: 1px solid var(--nav-border);
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(var(--backdrop-blur));
+  -webkit-backdrop-filter: blur(var(--backdrop-blur));
+}
+
+.home-intro {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 24px;
+  border-radius: 30px;
+}
+
+.home-intro-label {
+  margin-bottom: 12px;
+  color: var(--accent-primary);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+}
+
+.home-intro h2 {
+  margin: 0 0 10px;
+  font-size: 30px;
+  line-height: 1.15;
+}
+
+.home-intro p {
+  margin: 0;
+  max-width: 430px;
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.home-more {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 18px;
+  border: 1px solid var(--button-ghost-border);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-primary);
 }
 
 .category-tabs {
-  margin-bottom: 10px;
-  position: relative;
+  margin: 0 16px;
+  padding: 10px 10px 0;
+  border-radius: 30px;
+}
+
+:deep(.van-sticky) {
+  z-index: 100;
 }
 
 :deep(.van-tabs__wrap) {
-  background-color: #fff;
+  margin-bottom: 10px;
+  border-radius: 18px;
+}
+
+:deep(.van-tabs__nav) {
+  background: transparent;
 }
 
 :deep(.van-tab) {
-  font-size: 14px;
+  font-size: 13px;
+  letter-spacing: 0.02em;
 }
 
 :deep(.van-tab--active) {
-  font-weight: bold;
-  color: #1989fa;
+  font-weight: 700;
 }
 
-.more-options {
-  position: fixed;
-  right: 0;
-  background-color: #fff;
-  padding: 0;
-  border-radius: 4px 0 0 4px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  z-index: 1000;
-  /* 通过计算属性动态设置top */
-  top: v-bind('tabsTop + "px"');
-  height: 44px; /* 与van-tabs__wrap高度一致 */
-  display: flex;
-  align-items: center;
+:deep(.van-tabs__content) {
+  min-height: calc(100vh - 260px);
 }
 
-.more-tab {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  color: #1989fa;
-  font-weight: bold;
-  height: 100%;
-  padding: 0 10px;
+:deep(.van-pull-refresh__track) {
+  min-height: calc(100vh - 260px);
 }
 
-.dropdown-menu {
-  position: absolute;
-  right: 15px;
-  top: 40px;
-  min-width: 100px;
-  background-color: #fff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  border-radius: 4px;
-  z-index: 999;
+.feed-space {
+  height: 10px;
 }
 
-.dropdown-item {
-  padding: 10px 15px;
-  text-align: center;
-  border-bottom: 1px solid #f5f5f5;
+.feed-bottom-space {
+  height: 102px;
 }
 
-.dropdown-item:last-child {
-  border-bottom: none;
-}
+@media (max-width: 520px) {
+  .home-intro {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 
-.dropdown-item:hover {
-  background-color: #f5f5f5;
+  .home-more {
+    width: 100%;
+    justify-content: center;
+  }
 }
 </style>

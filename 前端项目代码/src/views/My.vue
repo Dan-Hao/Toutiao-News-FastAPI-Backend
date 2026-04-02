@@ -1,8 +1,9 @@
 <template>
-  <div class="my-container">
-    <van-nav-bar :title="$t('my.title')" />
-    <div class="user-info" @click="goToProfile" v-if="isLogin">
-      <div class="avatar">
+  <div class="my-container page-shell">
+    <van-nav-bar :title="$t('my.title')" fixed class="my-nav" />
+
+    <div class="user-info neon-panel" @click="goToProfile" v-if="isLogin">
+      <div class="avatar-shell">
         <van-image
           round
           width="80"
@@ -11,13 +12,15 @@
         />
       </div>
       <div class="info">
+        <div class="eyebrow">PROFILE</div>
         <div class="username">{{ isLogin ? userInfo.username : $t('my.notLoggedIn') }}</div>
-        <div class="desc" v-if="isLogin">{{ userBio || $t('profile.bio') }}</div>
+        <div class="desc">{{ userBio || $t('profile.bio') }}</div>
       </div>
       <van-icon name="arrow" class="arrow-icon" />
     </div>
-    <div class="user-info" v-else>
-      <div class="avatar">
+
+    <div class="user-info neon-panel" v-else>
+      <div class="avatar-shell">
         <van-image
           round
           width="80"
@@ -26,23 +29,41 @@
         />
       </div>
       <div class="info">
+        <div class="eyebrow">PROFILE</div>
         <div class="username">{{ $t('my.notLoggedIn') }}</div>
-        <div class="desc">
-          <van-button type="primary" size="small" @click="goToLogin" style="margin-right: 10px">{{ $t('my.goToLogin') }}</van-button>
-          <van-button type="default" size="small" @click="goToRegister">{{ $t('my.goToRegister') }}</van-button>
+        <div class="action-row">
+          <van-button type="primary" size="small" class="neon-button" @click="goToLogin">{{ $t('my.goToLogin') }}</van-button>
+          <van-button type="default" size="small" class="neon-ghost-button" @click="goToRegister">{{ $t('my.goToRegister') }}</van-button>
         </div>
       </div>
     </div>
 
-    <div class="menu-list">
-      <van-cell-group inset>
-        <van-cell :title="$t('my.myFavorite')" is-link @click="goToFavorite" />
-        <van-cell :title="$t('my.browsingHistory')" is-link @click="goToHistory" />
-        <van-cell :title="$t('my.notifications')" is-link />
-        <van-cell :title="$t('my.settings')" is-link @click="goToSettings" />
-        <van-cell v-if="isLogin" :title="$t('my.logout')" @click="handleLogout" />
-      </van-cell-group>
+    <div class="menu-list neon-panel">
+      <div class="menu-title">
+        <div class="neon-section-title">PERSONAL HUB</div>
+        <div class="neon-section-subtitle">常用功能和账号入口。</div>
+      </div>
+
+      <button class="menu-entry" type="button" @click="goToFavorite">
+        <span>{{ $t('my.myFavorite') }}</span>
+        <van-icon name="arrow" />
+      </button>
+      <button class="menu-entry" type="button" @click="goToHistory">
+        <span>{{ $t('my.browsingHistory') }}</span>
+        <van-icon name="arrow" />
+      </button>
+      <div class="menu-entry static-entry">
+        <span>{{ $t('my.notifications') }}</span>
+      </div>
+      <button class="menu-entry" type="button" @click="goToSettings">
+        <span>{{ $t('my.settings') }}</span>
+        <van-icon name="arrow" />
+      </button>
+      <button v-if="isLogin" class="menu-entry logout-entry" type="button" @click="handleLogout">
+        <span>{{ $t('my.logout') }}</span>
+      </button>
     </div>
+
     <tab-bar />
   </div>
 </template>
@@ -51,7 +72,7 @@
 import { onMounted } from 'vue';
 import { useUserStore } from '../store/user';
 import { useRouter } from 'vue-router';
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 import { showDialog, showToast } from 'vant';
 import TabBar from '../components/TabBar.vue';
 import { useI18n } from 'vue-i18n';
@@ -60,29 +81,24 @@ const userStore = useUserStore();
 const router = useRouter();
 const { t } = useI18n();
 
-// 从store获取用户信息和登录状态
 const userInfo = computed(() => userStore.userInfo);
 const isLogin = computed(() => userStore.getLoginStatus);
 const userBio = computed(() => userStore.getUserBio || t('profile.bio'));
 
-// 跳转到登录页
 const goToLogin = () => {
   router.push('/login');
 };
 
-// 跳转到注册页
 const goToRegister = () => {
   router.push('/register');
 };
 
-// 跳转到个人信息页
 const goToProfile = () => {
   if (isLogin.value) {
     router.push('/profile');
   }
 };
 
-// 跳转到浏览历史页面
 const goToHistory = () => {
   if (isLogin.value) {
     router.push('/history');
@@ -92,7 +108,6 @@ const goToHistory = () => {
   }
 };
 
-// 跳转到我的收藏页面
 const goToFavorite = () => {
   if (isLogin.value) {
     router.push('/favorite');
@@ -102,12 +117,10 @@ const goToFavorite = () => {
   }
 };
 
-// 跳转到设置页面
 const goToSettings = () => {
   router.push('/settings');
 };
 
-// 退出登录
 const handleLogout = () => {
   showDialog({
     title: t('common.confirm'),
@@ -121,7 +134,6 @@ const handleLogout = () => {
   });
 };
 
-// 获取用户信息
 onMounted(async () => {
   try {
     await userStore.getUserInfoDetail();
@@ -132,60 +144,109 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.my-container {
-  padding-top: 46px;
-  padding-bottom: 50px;
-  background-color: var(--background-color);
-  color: var(--text-color);
+.page-shell {
   min-height: 100vh;
+  padding: 74px 16px 118px;
+  color: var(--text-primary);
   box-sizing: border-box;
 }
 
-.van-nav-bar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  z-index: 999;
+.my-nav {
+  width: min(calc(100% - 32px), 718px);
+  left: 50%;
+  transform: translateX(-50%);
+  top: 12px;
+  border-radius: 24px;
+  overflow: hidden;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.015)), var(--nav-background);
+  border: 1px solid var(--nav-border);
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(var(--backdrop-blur));
+  -webkit-backdrop-filter: blur(var(--backdrop-blur));
 }
 
 .user-info {
   display: flex;
   align-items: center;
-  padding: 20px 16px;
-  background-color: var(--primary-color);
-  color: #fff;
-  border-radius: 8px;
-  margin: 16px;
+  gap: 16px;
+  padding: 24px;
+  border-radius: 30px;
+  margin-bottom: 16px;
   position: relative;
 }
 
 .arrow-icon {
-  position: absolute;
-  right: 16px;
-  color: #969799;
+  color: var(--text-secondary);
 }
 
-.avatar {
-  margin-right: 16px;
+.avatar-shell {
+  padding: 4px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(200, 155, 83, 0.35));
+  box-shadow: var(--shadow-glow);
 }
 
 .info {
   flex: 1;
 }
 
+.eyebrow {
+  margin-bottom: 8px;
+  color: var(--accent-primary);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+}
+
 .username {
-  font-size: 18px;
-  font-weight: bold;
-  margin-bottom: 4px;
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 8px;
 }
 
 .desc {
-  font-size: 14px;
-  color: #999;
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.7;
+}
+
+.action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
 }
 
 .menu-list {
-  margin: 0 16px;
+  padding: 18px;
+  border-radius: 28px;
+}
+
+.menu-title {
+  margin-bottom: 12px;
+}
+
+.menu-entry {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  color: var(--text-primary);
+}
+
+.menu-entry + .menu-entry {
+  margin-top: 12px;
+}
+
+.static-entry {
+  color: var(--text-secondary);
+}
+
+.logout-entry {
+  justify-content: center;
+  color: #d58b7f;
 }
 </style>

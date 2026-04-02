@@ -1,12 +1,20 @@
 <template>
-  <div class="ai-chat-container">
-    <van-nav-bar title="AI问答" fixed />
-    
-    <div class="chat-content">
+  <div class="ai-chat-container page-shell">
+    <van-nav-bar title="AI问答" fixed class="chat-nav" />
+
+    <div class="chat-hero neon-panel">
+      <div>
+        <div class="chat-eyebrow">EDITORIAL AI DESK</div>
+        <h2>AI 问答</h2>
+        <p>在统一的深色阅读界面中进行提问，让对话区也保持沉静、清晰、易读。</p>
+      </div>
+    </div>
+
+    <div class="chat-content neon-panel-strong">
       <div class="messages-container" ref="messagesContainer">
-        <div 
-          v-for="(message, index) in messages" 
-          :key="index" 
+        <div
+          v-for="(message, index) in messages"
+          :key="index"
           :class="['message', message.role === 'user' ? 'user-message' : 'ai-message']"
         >
           <div class="message-content">
@@ -19,7 +27,7 @@
           </div>
         </div>
       </div>
-      
+
       <div class="input-container">
         <van-field
           v-model="userInput"
@@ -30,17 +38,17 @@
           class="chat-input"
           @keypress.enter.prevent="sendMessage"
         />
-        <van-button 
-          type="primary" 
-          class="send-button" 
-          :disabled="isLoading || !userInput.trim()" 
+        <van-button
+          type="primary"
+          class="send-button neon-button"
+          :disabled="isLoading || !userInput.trim()"
           @click="sendMessage"
         >
           发送
         </van-button>
       </div>
     </div>
-    
+
     <tab-bar />
   </div>
 </template>
@@ -53,7 +61,6 @@ import * as marked from 'marked';
 import DOMPurify from 'dompurify';
 import { aiChatConfig } from '../config/api';
 
-// 聊天消息
 const messages = ref([
   { role: 'assistant', content: '你好！我是AI助手，有什么可以帮助你的吗？' }
 ]);
@@ -61,47 +68,36 @@ const userInput = ref('');
 const messagesContainer = ref(null);
 const isLoading = ref(false);
 
-// 从配置文件获取API设置
 const apiEndpoint = ref(aiChatConfig.apiEndpoint);
 const apiKey = ref(aiChatConfig.apiKey);
 const model = ref(aiChatConfig.model);
 
-// 格式化消息内容（支持Markdown）
 const formatMessage = (content) => {
   if (!content) return '';
-  // 使用marked解析Markdown，并用DOMPurify清理HTML
   return DOMPurify.sanitize(marked.parse(content));
 };
 
-// 发送消息
 const sendMessage = async () => {
   if (!userInput.value.trim() || isLoading.value) return;
-  
-  // 检查API设置
+
   if (!apiKey.value || apiKey.value === 'your-api-key-here') {
     showToast('API Key未配置，请联系管理员');
     return;
   }
-  
-  // 添加用户消息
+
   const userMessage = userInput.value.trim();
   messages.value.push({ role: 'user', content: userMessage });
   userInput.value = '';
-  
-  // 添加AI消息占位
   messages.value.push({ role: 'assistant', content: '' });
-  
-  // 滚动到底部
+
   await nextTick();
   scrollToBottom();
-  
-  // 发送请求
+
   isLoading.value = true;
   try {
     await fetchAIResponse(userMessage);
   } catch (error) {
     console.error('Error fetching AI response:', error);
-    // 更新最后一条消息为错误信息
     messages.value[messages.value.length - 1].content = `发生错误: ${error.message || '请检查网络连接和API设置'}`;
   } finally {
     isLoading.value = false;
@@ -110,19 +106,18 @@ const sendMessage = async () => {
   }
 };
 
-// 获取AI响应（使用SSE）
 const fetchAIResponse = async (userMessage) => {
   const allMessages = messages.value
-    .slice(0, -1) // 排除最后一个空的assistant消息
+    .slice(0, -1)
     .map(msg => ({ role: msg.role, content: msg.content }));
-  
+
   try {
     const response = await fetch(apiEndpoint.value, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey.value}`,
-        'X-DashScope-SSE': 'enable' // 添加阿里云DashScope所需的SSE头
+        'X-DashScope-SSE': 'enable'
       },
       body: JSON.stringify({
         model: model.value,
@@ -130,105 +125,140 @@ const fetchAIResponse = async (userMessage) => {
         stream: true
       })
     });
-    
+
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
       throw new Error(error.error?.message || `HTTP error! status: ${response.status}`);
     }
-    
-    // 处理SSE流
+
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
     let aiResponse = '';
-  
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split('\n');
-    buffer = lines.pop() || '';
-    
-    for (const line of lines) {
-      if (line.startsWith('data: ')) {
-        const data = line.slice(6);
-        if (data === '[DONE]') continue;
-        
-        try {
-          const json = JSON.parse(data);
-          // 适配阿里云DashScope的返回格式
-          const content = json.choices?.[0]?.delta?.content || 
-                         json.output?.text || 
-                         json.choices?.[0]?.message?.content || '';
-          if (content) {
-            aiResponse += content;
-            // 更新最后一条消息
-            messages.value[messages.value.length - 1].content = aiResponse;
-            await nextTick();
-            scrollToBottom();
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const data = line.slice(6);
+          if (data === '[DONE]') continue;
+
+          try {
+            const json = JSON.parse(data);
+            const content = json.choices?.[0]?.delta?.content ||
+                           json.output?.text ||
+                           json.choices?.[0]?.message?.content || '';
+            if (content) {
+              aiResponse += content;
+              messages.value[messages.value.length - 1].content = aiResponse;
+              await nextTick();
+              scrollToBottom();
+            }
+          } catch (e) {
+            console.error('Error parsing SSE data:', e);
           }
-        } catch (e) {
-          console.error('Error parsing SSE data:', e);
         }
       }
     }
-  }
-  
-  // 如果没有收到任何内容
-  if (!aiResponse) {
-    messages.value[messages.value.length - 1].content = '抱歉，我无法生成回复。请检查API设置或稍后再试。';
-  }
+
+    if (!aiResponse) {
+      messages.value[messages.value.length - 1].content = '抱歉，我无法生成回复。请检查API设置或稍后再试。';
+    }
   } catch (error) {
     console.error('Fetch error:', error);
     throw error;
   }
 };
 
-// 滚动到底部
 const scrollToBottom = () => {
   if (messagesContainer.value) {
     messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
   }
 };
 
-// 监听消息变化，自动滚动
 watch(messages, () => {
   nextTick(scrollToBottom);
 }, { deep: true });
 
-// 组件挂载时滚动到底部
 onMounted(() => {
   scrollToBottom();
 });
 </script>
 
 <style scoped>
-.ai-chat-container {
+.page-shell {
+  min-height: 100vh;
+  padding: 74px 16px 118px;
   display: flex;
   flex-direction: column;
-  height: 100vh;
-  padding-top: 46px;
-  padding-bottom: 50px;
+  gap: 16px;
+  color: var(--text-primary);
   box-sizing: border-box;
+}
+
+.chat-nav {
+  width: min(calc(100% - 32px), 718px);
+  left: 50%;
+  transform: translateX(-50%);
+  top: 12px;
+  border-radius: 24px;
+  overflow: hidden;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.015)), var(--nav-background);
+  border: 1px solid var(--nav-border);
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(var(--backdrop-blur));
+  -webkit-backdrop-filter: blur(var(--backdrop-blur));
+}
+
+.chat-hero {
+  padding: 24px;
+  border-radius: 30px;
+}
+
+.chat-eyebrow {
+  margin-bottom: 12px;
+  color: var(--accent-primary);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+}
+
+.chat-hero h2 {
+  margin: 0 0 10px;
+  font-size: 28px;
+}
+
+.chat-hero p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.8;
 }
 
 .chat-content {
   flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
+  padding: 16px;
+  border-radius: 30px;
   overflow: hidden;
 }
 
 .messages-container {
   flex: 1;
   overflow-y: auto;
-  padding: 10px;
+  padding: 4px 2px 18px;
 }
 
 .message {
-  margin-bottom: 10px;
-  max-width: 80%;
+  margin-bottom: 14px;
+  max-width: 88%;
 }
 
 .user-message {
@@ -240,65 +270,81 @@ onMounted(() => {
 }
 
 .message-content {
-  padding: 10px;
-  border-radius: 10px;
+  padding: 15px 16px;
+  border-radius: 22px;
   word-break: break-word;
+  line-height: 1.8;
 }
 
 .user-message .message-content {
-  background-color: #007aff;
-  color: white;
+  background: var(--button-primary-bg);
+  color: var(--button-primary-text);
+  box-shadow: var(--shadow-glow);
 }
 
 .ai-message .message-content {
-  background-color: #f2f2f2;
-  color: #333;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
 }
 
 .input-container {
   display: flex;
-  padding: 10px;
-  border-top: 1px solid #eee;
-  background-color: #fff;
+  gap: 10px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .chat-input {
   flex: 1;
-  margin-right: 10px;
+  border-radius: 18px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+:deep(.chat-input .van-field__control) {
+  color: var(--text-primary);
+}
+
+:deep(.chat-input .van-field__control::placeholder) {
+  color: var(--text-muted);
 }
 
 .send-button {
   align-self: flex-end;
+  border-radius: 16px;
 }
 
-/* Markdown 样式 */
-.message-content pre {
-  background-color: #f8f8f8;
+.message-content pre,
+:deep(pre) {
+  background-color: rgba(255, 255, 255, 0.05);
   padding: 10px;
-  border-radius: 5px;
+  border-radius: 12px;
   overflow-x: auto;
 }
 
-.message-content code {
-  background-color: rgba(0, 0, 0, 0.05);
+.message-content code,
+:deep(code) {
+  font-family: monospace;
+  background-color: rgba(255, 255, 255, 0.05);
   padding: 2px 4px;
-  border-radius: 3px;
+  border-radius: 6px;
 }
 
 .message-content img {
   max-width: 100%;
 }
 
-/* 打字指示器 */
 .typing-indicator {
   display: flex;
   padding: 5px;
 }
 
 .typing-indicator span {
-  height: 8px;
-  width: 8px;
-  background-color: #999;
+  height: 7px;
+  width: 7px;
+  background-color: var(--accent-primary);
   border-radius: 50%;
   margin: 0 2px;
   display: inline-block;
@@ -318,23 +364,8 @@ onMounted(() => {
     transform: translateY(0);
   }
   30% {
-    transform: translateY(-5px);
+    transform: translateY(-4px);
   }
-}
-
-/* Markdown样式 */
-:deep(pre) {
-  background-color: #f0f0f0;
-  padding: 10px;
-  border-radius: 4px;
-  overflow-x: auto;
-}
-
-:deep(code) {
-  font-family: monospace;
-  background-color: #f0f0f0;
-  padding: 2px 4px;
-  border-radius: 4px;
 }
 
 :deep(p) {
@@ -346,7 +377,7 @@ onMounted(() => {
 }
 
 :deep(a) {
-  color: #1989fa;
+  color: var(--accent-primary);
   text-decoration: none;
 }
 </style>
